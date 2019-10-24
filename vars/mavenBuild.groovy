@@ -73,7 +73,7 @@ def call(body){
         currentBuild.result = 'ABORTED'
         error 'Maven build cannot determine app version.  Use appVersion to specify its value.'
     }
-        BUILD_NUMBER=${env.BUILD_NUMBER}
+        BUILD_NUMBER=env.BUILD_NUMBER
     // Set the artifactBuildNumber
     if (!config.artifactBuildNumber) {
         config.artifactBuildNumber = BUILD_NUMBER

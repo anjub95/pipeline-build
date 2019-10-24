@@ -55,7 +55,7 @@ static argDesc = [
 ]
 
 def call(body){
-    //library 'pipeline-common'
+    library 'pipeline-common'
     def config = parseArgs(argDesc, body)
 
     // Check if the pom file exists
@@ -148,64 +148,3 @@ def copyPomFile(config, artifactId) {
             sh 'mkdir demo-artifacts'
             sh "cp ${config.pomFileLocation} demo-artifacts/${pomName}"
  }
-def parseArgs(argDesc, body) {
-    //logging TransactionId
-    logTransactionId()
-    // First, evaluate the body and grab the raw values
-    def raw = [:]
-    if (body) {
-        body.resolveStrategy = Closure.DELEGATE_FIRST
-        body.delegate = raw
-        body()
-     }
-
-    // Now, process the arguments in turn
-    def args = [:]
-    argDesc.args.each { name, desc ->
-        // Check if we have a value
-        if (raw.containsKey(name)) {
-            def value = raw[name]
-
-            // Pass it through the validator if there is one
-            if (desc.containsKey('validate')) {
-                value = desc.validate(value)
-            }
-
-            args[name] = value
-        } else if (desc.containsKey('default')) {
-            // Assign the default
-            args[name] = desc['default']
-        } else {
-            // OK, the value is required, but not provided.  Get an
-            // error message
-            def errMsg
-            if (desc.containsKey('error')) {
-                errMsg = desc.error
-            } else {
-                errMsg = "${argDesc.name} missing required parameter ${name}.  ${desc.description}"
-            }
-
-            // Mark the build aborted and output the error message
-            currentBuild.result = 'ABORTED'
-            error errMsg
-        }
-    }
-    return args
-}
-
-/**
- * logs and returns transactionId created using jenkins job start time and gitsha
- * @return transactionId
- */
-def logTransactionId(){
-    if (env.NODE_NAME && fileExists(file: '.git') && !(env.TRANSACTION_ID) ) {
-        def gitSha = sh returnStdout: true, script: 'git rev-parse HEAD'
-        def startTimeInMillis = currentBuild.startTimeInMillis
-        Date date = new Date(startTimeInMillis)
-        def formattedDateTime = date.format("yyyy-MM-dd'T'hh:mm:ss'Z'", TimeZone.getTimeZone('UTC'));
-        gitSha = gitSha.substring(0, 8)
-        env.TRANSACTION_ID = "${formattedDateTime}-${gitSha}"
-        echo "Pipeline Transaction ID ${env.TRANSACTION_ID}"
-        }
-    env.TRANSACTION_ID
-}

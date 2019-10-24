@@ -113,7 +113,6 @@ def createFile(def scripts,def fileName){
     }
     fileCreated
 }
-
 def performNonContainerBuild(config){
     //Installing tools
     //def javaHome = demoTool.downloadInstallTool(config, config.java)  // tool where is it downloaded from?
@@ -132,7 +131,6 @@ def performNonContainerBuild(config){
         }
     }
 }
-
 def performContainerBuild(config) {
     // Initialize the buildCommands
     if (!config.buildCommands) {
@@ -145,15 +143,11 @@ def performContainerBuild(config) {
         }
     }
 }
-
-
 def copyPomFile(config, artifactId) {
     def pomName = "${artifactId}-" + "${config.appVersion}.${config.artifactBuildNumber}.pom"
             sh 'mkdir demo-artifacts'
             sh "cp ${config.pomFileLocation} demo-artifacts/${pomName}"
  }
-
-
 def parseArgs(argDesc, body) {
     //logging TransactionId
     logTransactionId()

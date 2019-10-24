@@ -55,8 +55,8 @@ static argDesc = [
 ]
 
 def call(body){
-    library 'pipeline-common'
-    def config = demoCommon.parseArgs(argDesc, body)
+    //library 'pipeline-common'
+    def config = parseArgs(argDesc, body)
 
     // Check if the pom file exists
     if (!fileExists(config.pomFileLocation)) {
@@ -79,14 +79,6 @@ def call(body){
         config.artifactBuildNumber = common.getJenkinsBuildNumber()
     }
 
-    //report metrics build Successful false because build just started
-/*    def edpBuildStartTime = System.currentTimeMillis()
-    def sendMetricsArgs = [
-      buildSuccessful: false,
-      edpBuildStartTime: edpBuildStartTime,
-    ]
-    //sendMetrics(config,sendMetricsArgs)*/
-
     if(!config.containerBuild){
         performNonContainerBuild(config)
     }
@@ -94,14 +86,6 @@ def call(body){
         performContainerBuild(config)
     }
 
-    //report metrics build successful true
-    //def edpBuildEndTime = System.currentTimeMillis()
-    /*sendMetricsArgs = [
-      buildSuccessful: true,
-      edpBuildStartTime: edpBuildStartTime,
-      edpBuildEndTime: edpBuildEndTime,
-    ]
-    sendMetrics(config,sendMetricsArgs)*/
 
     def pomMap = readMavenPom file: config.pomFileLocation
     config.artifactId = pomMap.artifactId
@@ -132,8 +116,8 @@ def createFile(def scripts,def fileName){
 
 def performNonContainerBuild(config){
     //Installing tools
-    def javaHome = demoTool.downloadInstallTool(config, config.java)  // tool where is it downloaded from?
-    def mavenHome = demoTool.downloadInstallTool(config, config.maven) //same as above
+    //def javaHome = demoTool.downloadInstallTool(config, config.java)  // tool where is it downloaded from?
+    //def mavenHome = demoTool.downloadInstallTool(config, config.maven) //same as above
     // Initialize the buildCommands
     if (!config.buildCommands) {
         config.buildCommands.add('export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts"')
@@ -162,65 +146,72 @@ def performContainerBuild(config) {
     }
 }
 
-/**
- * send metrics to env.INFLUX_DB
- * Each function that reports metrics needs ability to add its own tags and fields to data sent to Influx.
- * Thus buildTags and buildFields are passed as closures to tmoMetrics.reportMetrics()
-*/
 
-//Reference to pipeline-common tmoMetrics.groovy 
-/*def sendMetrics(config,sendMetricsArgs){
-  try{
-    def buildTags = {->
-      def buildType = 'maven'
-      def buildRun = true
-      def tags = tmoMetrics.metricsAddCommonTags()
-      tags += ",build_run=${buildRun}"
-      tags += ",build_type=${buildType}"
-      return tags
-    }
-
-    def buildFields = {->
-      def fields = tmoMetrics.metricsAddCommonFields()
-      fields += ",build_success=\\\"${sendMetricsArgs.buildSuccessful}\\\""
-      if(sendMetricsArgs.edpBuildStartTime && sendMetricsArgs.edpBuildEndTime){
-        fields += ",build_duration_seconds=\\\"${buildDurationSeconds(sendMetricsArgs)}\\\""
-      }
-      return fields
-    }
-
-    tmoMetrics.metricsGatherCommonMetrics() //must call before accesing env.INFLUX_BUILD_METRICS_MEASUREMENT becuse this method sets that value
-
-    def reportMetricsArgs = [
-      influx_mesurement: env.INFLUX_BUILD_METRICS_MEASUREMENT,
-    ]
-
-    tmoMetrics.reportMetrics(config,buildTags,buildFields,reportMetricsArgs)
-  }catch(err){
-    echo "error sending pipeline metrics ${err.toString()}"
-  }
-}*/
-
-/**
- * edpBuildEndTime in milliseconds
- * edpBuildStartTime in milliseconds
- * buildDurationMili in milliseconds
- * convert to seconds
-*/
-/*def buildDurationSeconds(sendMetricsArgs){
-  def buildDurationMili = sendMetricsArgs.edpBuildEndTime - sendMetricsArgs.edpBuildStartTime
-  def durationSecounds = TimeUnit.SECONDS.convert(buildDurationMili, TimeUnit.MILLISECONDS) //INFLUX TIMESTAMP MUST BE EPOCH NANO SECONDS TIME
-  return durationSecounds
-}*/
-
-/**
- * copyPomFile copies pom file to edp-pom directory.
- *
- * @param config Map object with config parameter.
- * @param artifactId The artifactId reading from pom file.
- */
 def copyPomFile(config, artifactId) {
     def pomName = "${artifactId}-" + "${config.appVersion}.${config.artifactBuildNumber}.pom"
             sh 'mkdir demo-artifacts'
             sh "cp ${config.pomFileLocation} demo-artifacts/${pomName}"
  }
+
+
+def parseArgs(argDesc, body) {
+    //logging TransactionId
+    logTransactionId()
+    // First, evaluate the body and grab the raw values
+    def raw = [:]
+    if (body) {
+        body.resolveStrategy = Closure.DELEGATE_FIRST
+        body.delegate = raw
+        body()
+     }
+
+    // Now, process the arguments in turn
+    def args = [:]
+    argDesc.args.each { name, desc ->
+        // Check if we have a value
+        if (raw.containsKey(name)) {
+            def value = raw[name]
+
+            // Pass it through the validator if there is one
+            if (desc.containsKey('validate')) {
+                value = desc.validate(value)
+            }
+
+            args[name] = value
+        } else if (desc.containsKey('default')) {
+            // Assign the default
+            args[name] = desc['default']
+        } else {
+            // OK, the value is required, but not provided.  Get an
+            // error message
+            def errMsg
+            if (desc.containsKey('error')) {
+                errMsg = desc.error
+            } else {
+                errMsg = "${argDesc.name} missing required parameter ${name}.  ${desc.description}"
+            }
+
+            // Mark the build aborted and output the error message
+            currentBuild.result = 'ABORTED'
+            error errMsg
+        }
+    }
+    return args
+}
+
+/**
+ * logs and returns transactionId created using jenkins job start time and gitsha
+ * @return transactionId
+ */
+def logTransactionId(){
+    if (env.NODE_NAME && fileExists(file: '.git') && !(env.TRANSACTION_ID) ) {
+        def gitSha = sh returnStdout: true, script: 'git rev-parse HEAD'
+        def startTimeInMillis = currentBuild.startTimeInMillis
+        Date date = new Date(startTimeInMillis)
+        def formattedDateTime = date.format("yyyy-MM-dd'T'hh:mm:ss'Z'", TimeZone.getTimeZone('UTC'));
+        gitSha = gitSha.substring(0, 8)
+        env.TRANSACTION_ID = "${formattedDateTime}-${gitSha}"
+        echo "Pipeline Transaction ID ${env.TRANSACTION_ID}"
+        }
+    env.TRANSACTION_ID
+}

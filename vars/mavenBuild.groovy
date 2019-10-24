@@ -56,7 +56,7 @@ static argDesc = [
 
 def call(body){
     library 'pipeline-common'
-    def config = parseArgs(argDesc, body)
+    def config = demoCommon.parseArgs(argDesc, body)
 
     // Check if the pom file exists
     if (!fileExists(config.pomFileLocation)) {

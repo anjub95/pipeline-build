@@ -115,8 +115,8 @@ def createFile(def scripts,def fileName){
 }
 def performNonContainerBuild(config){
     //Installing tools
-    //def javaHome = demoTool.downloadInstallTool(config, config.java)  // tool where is it downloaded from?
-    //def mavenHome = demoTool.downloadInstallTool(config, config.maven) //same as above
+    def javaHome = demoTool.downloadInstallTool(config, config.java)  // tool where is it downloaded from?
+    def mavenHome = demoTool.downloadInstallTool(config, config.maven) //same as above
     // Initialize the buildCommands
     if (!config.buildCommands) {
         config.buildCommands.add('export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts"')

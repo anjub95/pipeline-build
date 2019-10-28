@@ -120,15 +120,13 @@ def performNonContainerBuild(config){
     // Initialize the buildCommands
     if (!config.buildCommands) {
         config.buildCommands.add('export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts"')
-        config.buildCommands.add("\$MVN_HOME/mvn -f ${config.pomFileLocation} -s \$MAVEN_SETTINGS ${config.mavenGoals}")
+        config.buildCommands.add("\$MVN_HOME/mvn -f ${config.pomFileLocation} ${config.mavenGoals}")
     }
 
     createFile(config.buildCommands,'build.sh')
     echo "Build Artifact Version ${config.appVersion}.${config.artifactBuildNumber}"
     withEnv(["JAVA_HOME=${javaHome}", "MVN_HOME=${mavenHome}/bin","APP_VERSION=${config.appVersion}","BUILD_NUMBER=${config.artifactBuildNumber}"]) {
-        configFileProvider([configFile(fileId: 'snapshot-repository-settings-xml', variable: 'MAVEN_SETTINGS')]) { //change fileID
             sh 'bash build.sh'
-        }
     }
 }
 def performContainerBuild(config) {
@@ -138,9 +136,7 @@ def performContainerBuild(config) {
     }
     createFile(config.buildCommands,'build.sh')
     withEnv(["APP_VERSION=${config.appVersion}", "BUILD_NUMBER=${config.artifactBuildNumber}"]) {
-        configFileProvider([configFile(fileId: 'snapshot-repository-settings-xml', variable: 'MAVEN_SETTINGS')]) { //change fileID?
             sh 'bash build.sh'
-        }
     }
 }
 def copyPomFile(config, artifactId) {

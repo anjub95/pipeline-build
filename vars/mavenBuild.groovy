@@ -115,7 +115,7 @@ def createFile(def scripts,def fileName){
 }
 def performNonContainerBuild(config){
     //Installing tools
-    //def javaHome = demoTool.downloadInstallTool(config, config.java)  // tool where is it downloaded from?
+    def javaHome = demoTool.downloadInstallTool(config, config.java)  // tool where is it downloaded from?
     def mavenHome = demoTool.downloadInstallTool(config, config.maven) //same as above
     // Initialize the buildCommands
     if (!config.buildCommands) {

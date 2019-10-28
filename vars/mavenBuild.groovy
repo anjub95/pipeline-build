@@ -16,7 +16,7 @@ static argDesc = [
             ],
             java: [
                     description: 'Specify java tool name.  Ensure tool key exists in allowed-tools.json file.',
-                    default: 'java-1.8.131',
+                    default: 'openjdk-8u222',
             ],
             pomFileLocation: [
                     description: 'Specify the location of the pom.xml file.  Defaults to "pom.xml".',

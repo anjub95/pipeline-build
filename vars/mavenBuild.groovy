@@ -141,6 +141,6 @@ def performContainerBuild(config) {
 }
 def copyPomFile(config, artifactId) {
     def pomName = "${artifactId}-" + "${config.appVersion}.${config.artifactBuildNumber}.pom"
-            sh 'mkdir demo-artifacts'
+            sh 'mkdir -p demo-artifacts'
             sh "cp ${config.pomFileLocation} demo-artifacts/${pomName}"
  }
